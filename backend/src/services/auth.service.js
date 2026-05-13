@@ -8,73 +8,168 @@ import Individual from "../models/individual.model.js";
 
 const authService = {
   async register(data) {
-    const {
-      name,
-      email,
-      phone,
-      password,
-      role,
+    const { username, email, password } = data;
 
-      // Restaurant fields
-      restaurant_name,
-      cuisine_type,
-      license_number,
+    const existingEmail = await User.findByEmail(email);
 
-      // Food bank fields
-      organization_name,
-      registration_number,
-
-      // Common field
-      location,
-    } = data;
-
-    const existingUser = await User.findByEmail(email);
-
-    if (existingUser) {
+    if (existingEmail) {
       throw new Error("Email already exists");
+    }
+
+    const existingUsername = await User.findByUsername(username);
+
+    if (existingUsername) {
+      throw new Error("Username already exists");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const user = await User.createBasic({
+      username,
+      email,
+      password: hashedPassword,
+    });
+
+    const token = jwt.sign(
+      {
+        user_id: user.user_id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    return {
+      token,
+      user,
+    };
+  },
+
+  async chooseRole(user_id, { role }) {
+    const user = await User.findById(user_id);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role) {
+      throw new Error("Role already selected");
+    }
+
+    if (!["individual", "restaurant", "foodbank"].includes(role)) {
+      throw new Error("Invalid role");
+    }
+
+    const updatedUser = await User.chooseRole(user_id, role);
+
+    const newToken = jwt.sign(
+      {
+        user_id: updatedUser.user_id,
+        role: updatedUser.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    return {
+      token: newToken,
+      user: updatedUser,
+    };
+  },
+
+  async completeProfile(user_id, data) {
+    const {
+      // Individual fields
+      first_name,
+      last_name,
+      phone,
+      birthdate,
+
+      // Restaurant fields
+      restaurant_name,
+      cuisine_type,
+      full_address,
+      business_license_number,
+
+      // Food bank fields
+      organization_name,
+      registration_number,
+      location,
+    } = data;
+
+    const user = await User.findById(user_id);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.role) {
+      throw new Error("Please choose a role first");
+    }
+
+    if (user.verification_status !== "incomplete") {
+      throw new Error("Profile already completed");
+    }
+
     let verification_status = "pending";
 
-    if (role === "individual") {
+    if (user.role === "individual") {
       verification_status = "approved";
     }
 
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      role,
-      verification_status,
-    });
-
-    if (role === "restaurant") {
+    if (user.role === "individual") {
+      await Individual.create({
+        user_id,
+        first_name,
+        last_name,
+        phone,
+        birthdate,
+      });
+    } else if (user.role === "restaurant") {
       await Restaurant.create({
-        user_id: user.user_id,
+        user_id,
         restaurant_name,
         cuisine_type,
-        license_number,
-        location,
+        full_address,
+        phone,
+        business_license_number,
       });
-    } else if (role === "foodbank") {
+    } else if (user.role === "foodbank") {
       await FoodBank.create({
-        user_id: user.user_id,
+        user_id,
         organization_name,
         registration_number,
+        phone,
         location,
-      });
-    } else if (role === "individual") {
-      await Individual.create({
-        user_id: user.user_id,
       });
     } else {
       throw new Error("Invalid role");
     }
 
-    return user;
+    const updatedUser = await User.updateVerificationStatus(
+      user_id,
+      verification_status
+    );
+
+    const newToken = jwt.sign(
+      {
+        user_id: updatedUser.user_id,
+        role: updatedUser.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    return {
+      token: newToken,
+      user: updatedUser,
+    };
   },
 
   async login({ email, password }) {
@@ -105,9 +200,8 @@ const authService = {
       token,
       user: {
         user_id: user.user_id,
-        name: user.name,
+        username: user.username,
         email: user.email,
-        phone: user.phone,
         role: user.role,
         verification_status: user.verification_status,
       },

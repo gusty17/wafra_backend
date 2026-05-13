@@ -1,25 +1,20 @@
-
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
-
-    name VARCHAR(100) NOT NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    phone VARCHAR(20),
-
     password VARCHAR(255) NOT NULL,
 
-    role VARCHAR(20) NOT NULL CHECK (
+    role VARCHAR(20) CHECK (
         role IN ('restaurant', 'individual', 'foodbank')
     ),
 
-    verification_status VARCHAR(20) DEFAULT 'pending' CHECK (
-        verification_status IN ('pending', 'approved', 'rejected')
+    verification_status VARCHAR(20) DEFAULT 'incomplete' CHECK (
+        verification_status IN ('incomplete', 'pending', 'approved', 'rejected')
     ),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 
 CREATE TABLE IF NOT EXISTS restaurants (
     restaurant_id SERIAL PRIMARY KEY,
@@ -28,8 +23,9 @@ CREATE TABLE IF NOT EXISTS restaurants (
 
     restaurant_name VARCHAR(150) NOT NULL,
     cuisine_type VARCHAR(100),
-    license_number VARCHAR(100),
-    location TEXT,
+    full_address TEXT,
+    phone VARCHAR(20),
+    business_license_number VARCHAR(100),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,6 +42,7 @@ CREATE TABLE IF NOT EXISTS food_banks (
 
     organization_name VARCHAR(150) NOT NULL,
     registration_number VARCHAR(100),
+    phone VARCHAR(20),
     location TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -55,18 +52,21 @@ CREATE TABLE IF NOT EXISTS food_banks (
 );
 
 
-
 CREATE TABLE IF NOT EXISTS individuals (
     individual_id SERIAL PRIMARY KEY,
 
     user_id INT UNIQUE NOT NULL,
+
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    birthdate DATE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
-
 
 
 CREATE TABLE IF NOT EXISTS food_listings (

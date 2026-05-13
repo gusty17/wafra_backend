@@ -5,12 +5,12 @@ export const authMiddleware = (req, res, next) => {
   try {
     let token;
 
-    // 1. Check cookie token
+    
     if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
 
-    // 2. Check Authorization header as backup
+    
     if (!token && req.headers.authorization) {
       token = req.headers.authorization.split(" ")[1];
     }

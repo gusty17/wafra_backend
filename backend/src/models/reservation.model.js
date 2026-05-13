@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+
 const Reservation = {
   async create({ listing_id, user_id, requested_quantity }) {
     const query = `
@@ -18,42 +19,65 @@ const Reservation = {
   },
 
   async findById(reservation_id) {
-  const query = `
-    SELECT 
-      res.*,
-      fl.food_name,
-      fl.category,
-      fl.quantity,
-      fl.pickup_time,
-      fl.location,
-      fl.restaurant_id,
-      r.restaurant_name,
-      u.name AS receiver_name,
-      u.email AS receiver_email,
-      u.phone AS receiver_phone,
-      u.role AS receiver_role
-    FROM reservations res
-    JOIN food_listings fl ON res.listing_id = fl.listing_id
-    JOIN restaurants r ON fl.restaurant_id = r.restaurant_id
-    JOIN users u ON res.user_id = u.user_id
-    WHERE res.reservation_id = $1;
-  `;
+    const query = `
+      SELECT 
+        res.*,
 
-  const result = await db.query(query, [reservation_id]);
-  return result.rows[0];
+        fl.food_name,
+        fl.category,
+        fl.quantity,
+        fl.pickup_time,
+        fl.location,
+        fl.restaurant_id,
+
+        r.restaurant_name,
+
+        u.email AS receiver_email,
+        u.role AS receiver_role,
+
+        CASE
+          WHEN u.role = 'individual' THEN CONCAT(i.first_name, ' ', i.last_name)
+          WHEN u.role = 'foodbank' THEN fb.organization_name
+          ELSE u.email
+        END AS receiver_name,
+
+        CASE
+          WHEN u.role = 'individual' THEN i.phone
+          WHEN u.role = 'foodbank' THEN fb.phone
+          ELSE NULL
+        END AS receiver_phone
+
+      FROM reservations res
+      JOIN food_listings fl ON res.listing_id = fl.listing_id
+      JOIN restaurants r ON fl.restaurant_id = r.restaurant_id
+      JOIN users u ON res.user_id = u.user_id
+
+      LEFT JOIN individuals i ON u.user_id = i.user_id
+      LEFT JOIN food_banks fb ON u.user_id = fb.user_id
+
+      WHERE res.reservation_id = $1;
+    `;
+
+    const result = await db.query(query, [reservation_id]);
+    return result.rows[0];
   },
+
   async findByUserId(user_id) {
     const query = `
       SELECT 
         res.*,
+
         fl.food_name,
         fl.category,
         fl.pickup_time,
         fl.location,
+
         r.restaurant_name
+
       FROM reservations res
       JOIN food_listings fl ON res.listing_id = fl.listing_id
       JOIN restaurants r ON fl.restaurant_id = r.restaurant_id
+
       WHERE res.user_id = $1
       ORDER BY res.created_at DESC;
     `;
@@ -66,17 +90,34 @@ const Reservation = {
     const query = `
       SELECT 
         res.*,
+
         fl.food_name,
         fl.category,
         fl.pickup_time,
         fl.location,
-        u.name AS receiver_name,
+
         u.email AS receiver_email,
-        u.phone AS receiver_phone,
-        u.role AS receiver_role
+        u.role AS receiver_role,
+
+        CASE
+          WHEN u.role = 'individual' THEN CONCAT(i.first_name, ' ', i.last_name)
+          WHEN u.role = 'foodbank' THEN fb.organization_name
+          ELSE u.email
+        END AS receiver_name,
+
+        CASE
+          WHEN u.role = 'individual' THEN i.phone
+          WHEN u.role = 'foodbank' THEN fb.phone
+          ELSE NULL
+        END AS receiver_phone
+
       FROM reservations res
       JOIN food_listings fl ON res.listing_id = fl.listing_id
       JOIN users u ON res.user_id = u.user_id
+
+      LEFT JOIN individuals i ON u.user_id = i.user_id
+      LEFT JOIN food_banks fb ON u.user_id = fb.user_id
+
       WHERE fl.restaurant_id = $1
       ORDER BY res.created_at DESC;
     `;

@@ -1,15 +1,16 @@
 import db from "../config/db.js";
 
 const FoodBank = {
-  async create({ user_id, organization_name, registration_number, location }) {
+  async create({ user_id, organization_name, registration_number, phone, location }) {
     const query = `
       INSERT INTO food_banks (
         user_id,
         organization_name,
         registration_number,
+        phone,
         location
       )
-      VALUES ($1, $2, $3, $4)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *;
     `;
 
@@ -17,6 +18,7 @@ const FoodBank = {
       user_id,
       organization_name,
       registration_number,
+      phone,
       location,
     ];
 
@@ -46,21 +48,23 @@ const FoodBank = {
     return result.rows[0];
   },
 
-  async updateByUserId(user_id, { organization_name, registration_number, location }) {
+  async updateByUserId(user_id, { organization_name, registration_number, phone, location }) {
     const query = `
       UPDATE food_banks
       SET
         organization_name = COALESCE($1, organization_name),
         registration_number = COALESCE($2, registration_number),
-        location = COALESCE($3, location),
+        phone = COALESCE($3, phone),
+        location = COALESCE($4, location),
         updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = $4
+      WHERE user_id = $5
       RETURNING *;
     `;
 
     const values = [
       organization_name,
       registration_number,
+      phone,
       location,
       user_id,
     ];
