@@ -115,11 +115,8 @@ const authService = {
       throw new Error("Profile already completed");
     }
 
-    let verification_status = "pending";
-
-    if (user.role === "individual") {
-      verification_status = "approved";
-    }
+    const verification_status =
+      user.role === "individual" ? "approved" : "pending";
 
     if (user.role === "individual") {
       await Individual.create({

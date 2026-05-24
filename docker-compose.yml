@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wafra_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: wafra1234
+      POSTGRES_DB: wafra_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - wafra_pg_data:/var/lib/postgresql/data
+      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    container_name: wafra_api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:wafra1234@db:5432/wafra_db
+      JWT_SECRET: wafra_dev_secret_change_in_prod
+    ports:
+      - "5000:5000"
+
+volumes:
+  wafra_pg_data:

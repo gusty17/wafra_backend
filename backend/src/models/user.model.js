@@ -89,6 +89,16 @@ const User = {
     return result.rows[0];
   },
 
+  async findAll() {
+    const query = `
+      SELECT user_id, username, email, role, verification_status, created_at
+      FROM users
+      ORDER BY created_at DESC;
+    `;
+    const result = await db.query(query);
+    return result.rows;
+  },
+
   async updateVerificationStatus(user_id, verification_status) {
     const query = `
       UPDATE users
