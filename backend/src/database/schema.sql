@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
 
     role VARCHAR(20) CHECK (
-        role IN ('restaurant', 'individual', 'foodbank')
+        role IN ('restaurant', 'individual', 'foodbank', 'admin')
     ),
 
     verification_status VARCHAR(20) DEFAULT 'incomplete' CHECK (
