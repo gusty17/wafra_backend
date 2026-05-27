@@ -1,5 +1,15 @@
 import db from "../config/db.js";
 
+function parseTags(row) {
+  if (!row) return row;
+  const raw = row.dietary_tags;
+  if (typeof raw === "string") {
+    try { row.dietary_tags = JSON.parse(raw); }
+    catch (_) { row.dietary_tags = []; }
+  }
+  return row;
+}
+
 const Listing = {
   async create({
     restaurant_id,
@@ -34,11 +44,11 @@ const Listing = {
       pickup_time,
       location,
       photo_url,
-      dietary_tags,
+      Array.isArray(dietary_tags) ? JSON.stringify(dietary_tags) : dietary_tags,
     ];
 
     const result = await db.query(query, values);
-    return result.rows[0];
+    return parseTags(result.rows[0]);
   },
 
   async getAllAvailable() {
@@ -54,7 +64,7 @@ const Listing = {
     `;
 
     const result = await db.query(query);
-    return result.rows;
+    return result.rows.map(parseTags);
   },
 
   async findById(listing_id) {
@@ -69,7 +79,7 @@ const Listing = {
     `;
 
     const result = await db.query(query, [listing_id]);
-    return result.rows[0];
+    return parseTags(result.rows[0]);
   },
 
   async findByRestaurantId(restaurant_id) {
@@ -81,7 +91,7 @@ const Listing = {
     `;
 
     const result = await db.query(query, [restaurant_id]);
-    return result.rows;
+    return result.rows.map(parseTags);
   },
 
   async updateById(
@@ -120,13 +130,46 @@ const Listing = {
       pickup_time,
       location,
       photo_url,
-      dietary_tags,
+      Array.isArray(dietary_tags) ? JSON.stringify(dietary_tags) : dietary_tags,
       status,
       listing_id,
     ];
 
     const result = await db.query(query, values);
-    return result.rows[0];
+    return parseTags(result.rows[0]);
+  },
+
+  async reduceQuantity(listing_id, amount) {
+    const query = `
+      UPDATE food_listings
+      SET
+        quantity   = quantity - $1,
+        status     = CASE WHEN quantity - $1 <= 0 THEN 'reserved' ELSE status END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE listing_id = $2 AND quantity >= $1
+      RETURNING *;
+    `;
+
+    const result = await db.query(query, [amount, listing_id]);
+    if (result.rowCount === 0) {
+      throw new Error("Not enough quantity available");
+    }
+    return parseTags(result.rows[0]);
+  },
+
+  async restoreQuantity(listing_id, amount) {
+    const query = `
+      UPDATE food_listings
+      SET
+        quantity   = quantity + $1,
+        status     = CASE WHEN status = 'reserved' THEN 'available' ELSE status END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE listing_id = $2
+      RETURNING *;
+    `;
+
+    const result = await db.query(query, [amount, listing_id]);
+    return parseTags(result.rows[0]);
   },
 
   async deleteById(listing_id) {
@@ -177,7 +220,7 @@ const Listing = {
     query += ` ORDER BY fl.created_at DESC;`;
 
     const result = await db.query(query, values);
-    return result.rows;
+    return result.rows.map(parseTags);
   },
 };
 

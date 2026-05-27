@@ -17,8 +17,6 @@ import {
 const router = express.Router();
 
 router.get("/", authMiddleware, getAllListings);
-router.get("/:id", authMiddleware, getListingById);
-
 router.get(
   "/my",
   authMiddleware,
@@ -26,6 +24,7 @@ router.get(
   requireApprovedUser,
   getMyListings
 );
+router.get("/:id", authMiddleware, getListingById);
 
 router.post(
   "/",

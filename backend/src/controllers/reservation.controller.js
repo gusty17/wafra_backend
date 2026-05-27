@@ -32,6 +32,8 @@ export const createReservation = async (req, res) => {
       requested_quantity,
     });
 
+    await Listing.reduceQuantity(listing_id, requested_quantity);
+
     res.status(201).json({
       message: "Reservation request created successfully",
       reservation,
@@ -156,6 +158,8 @@ export const declineReservation = async (req, res) => {
 
     const updatedReservation = await Reservation.decline(req.params.id);
 
+    await Listing.restoreQuantity(reservation.listing_id, reservation.requested_quantity);
+
     res.status(200).json({
       message: "Reservation declined successfully",
       reservation: updatedReservation,
@@ -190,6 +194,8 @@ export const cancelReservation = async (req, res) => {
     }
 
     const updatedReservation = await Reservation.cancel(req.params.id);
+
+    await Listing.restoreQuantity(reservation.listing_id, reservation.requested_quantity);
 
     res.status(200).json({
       message: "Reservation cancelled successfully",
